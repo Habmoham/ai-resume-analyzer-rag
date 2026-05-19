@@ -1,0 +1,74 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# =========================
+# FastAPI / Logs
+# =========================
+*.log
+logs/
+uvicorn*.log
+
+# =========================
+# Node / React
+# =========================
+node_modules/
+dist/
+dist-ssr/
+build/
+*.local
+
+# =========================
+# ML / AI models (VERY IMPORTANT)
+# =========================
+*.pt
+*.pth
+*.bin
+*.onnx
+*.model
+*.dll
+
+# HuggingFace cache
+.cache/
+huggingface/
+
+# FAISS index (if you save locally later)
+*.index
+
+# =========================
+# Environment variables
+# =========================
+.env
+.env.local
+.env.*.local
+
+# =========================
+# OS
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# IDE / Editor
+# =========================
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# =========================
+# Temporary files
+# =========================
+*.tmp
+*.temp
