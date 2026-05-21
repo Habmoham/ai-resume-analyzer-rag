@@ -1,7 +1,7 @@
 import { useState } from "react";
 import API from "../services/api";
 
-function ChatBox() {
+export default function ChatBox() {
   const [query, setQuery] = useState("");
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
@@ -17,9 +17,8 @@ function ChatBox() {
       });
 
       setAnswer(res.data.answer);
-
-    } catch (error) {
-      console.error(error);
+    } catch (err) {
+      console.error(err);
       setAnswer("Error getting AI response");
     }
 
@@ -27,34 +26,35 @@ function ChatBox() {
   };
 
   return (
-    <div style={{ padding: "20px", marginTop: "40px" }}>
-      <h2>AI Career Assistant</h2>
+    <div>
+      <h2 className="text-lg font-semibold mb-3">🤖 AI Assistant</h2>
 
       <textarea
-        rows="4"
-        cols="60"
-        placeholder="Ask AI something..."
-        value={query}
+        className="w-full border p-2 rounded"
+        rows="3"
+        placeholder="Ask something about resumes, jobs, or career..."
         onChange={(e) => setQuery(e.target.value)}
       />
 
-      <br /><br />
-
-      <button onClick={askAI}>
+      {/* BUTTON */}
+      <button
+        onClick={askAI}
+        className="mt-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition"
+      >
         Ask AI
       </button>
 
-      <hr />
+      {/* LOADING */}
+      {loading && (
+        <p className="mt-3 text-gray-500">Thinking...</p>
+      )}
 
-      <h3>AI Response:</h3>
-
-      {loading ? (
-        <p>Thinking...</p>
-      ) : (
-        <p>{answer}</p>
+      {/* ANSWER BOX */}
+      {answer && (
+        <div className="mt-4 bg-gray-50 p-4 rounded-xl text-sm text-gray-700 whitespace-pre-line">
+          {answer}
+        </div>
       )}
     </div>
   );
 }
-
-export default ChatBox;
