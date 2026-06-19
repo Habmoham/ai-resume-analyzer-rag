@@ -3,58 +3,75 @@ import API from "../services/api";
 
 export default function ChatBox() {
   const [query, setQuery] = useState("");
-  const [answer, setAnswer] = useState("");
+  const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const askAI = async () => {
     if (!query) return;
 
+    const userMessage = { role: "user", text: query };
+
+    setMessages((prev) => [...prev, userMessage]);
     setLoading(true);
 
     try {
       const res = await API.post("/ask-ai", {
-        query: query,
+        query,
       });
 
-      setAnswer(res.data.answer);
+      const aiMessage = {
+        role: "ai",
+        text: res.data.answer || "No response",
+      };
+
+      setMessages((prev) => [...prev, aiMessage]);
     } catch (err) {
       console.error(err);
-      setAnswer("Error getting AI response");
     }
 
+    setQuery("");
     setLoading(false);
   };
 
   return (
-    <div>
-      <h2 className="text-lg font-semibold mb-3">🤖 AI Assistant</h2>
+    <div className="space-y-4">
 
+      {/* CHAT WINDOW */}
+      <div className="h-64 overflow-y-auto p-3 bg-gray-900/60 rounded-xl space-y-2">
+        {messages.map((msg, i) => (
+          <div
+            key={i}
+            className={`p-2 rounded-lg text-sm ${
+              msg.role === "user"
+                ? "bg-blue-600 text-white ml-auto w-fit"
+                : "bg-gray-700 text-white w-fit"
+            }`}
+          >
+            {msg.text}
+          </div>
+        ))}
+      </div>
+
+      {/* INPUT */}
       <textarea
-        className="w-full border p-2 rounded"
-        rows="3"
-        placeholder="Ask something about resumes, jobs, or career..."
+        className="w-full p-3 rounded-lg bg-gray-800 text-white border border-gray-700"
+        rows="2"
+        placeholder="Ask about resumes, jobs, career..."
+        value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
 
-      {/* BUTTON */}
       <button
         onClick={askAI}
-        className="mt-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition"
+        disabled={!query || loading}
+        className={`px-4 py-2 rounded-lg text-white transition ${
+          !query || loading
+            ? "bg-gray-500 cursor-not-allowed"
+            : "bg-green-600 hover:bg-green-700"
+        }`}
       >
-        Ask AI
+        {loading ? "Thinking..." : "Ask AI"}
       </button>
-
-      {/* LOADING */}
-      {loading && (
-        <p className="mt-3 text-gray-500">Thinking...</p>
-      )}
-
-      {/* ANSWER BOX */}
-      {answer && (
-        <div className="mt-4 bg-gray-50 p-4 rounded-xl text-sm text-gray-700 whitespace-pre-line">
-          {answer}
-        </div>
-      )}
     </div>
   );
 }

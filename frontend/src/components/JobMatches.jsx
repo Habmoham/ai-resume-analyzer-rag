@@ -2,22 +2,22 @@ import { useState } from "react";
 import API from "../services/api";
 import { motion } from "framer-motion";
 
-export default function JobMatches() {
-  const [resumeText, setResumeText] = useState("");
+export default function JobMatches({ resumeData }) {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [expanded, setExpanded] = useState({});
 
   const getMatches = async () => {
-    if (!resumeText) return;
+    if (!resumeData) return;
 
     setLoading(true);
 
     try {
       const res = await API.post("/match-jobs", {
-        resume_text: resumeText,
+        resume_text: resumeData,
       });
 
-      setJobs(res.data.matches);
+      setJobs(res.data.matches || []);
     } catch (err) {
       console.error(err);
     }
@@ -25,65 +25,75 @@ export default function JobMatches() {
     setLoading(false);
   };
 
+  const toggle = (index) => {
+    setExpanded((prev) => ({
+      ...prev,
+      [index]: !prev[index],
+    }));
+  };
+
   return (
-    <div>
-      <h2 className="text-lg font-semibold mb-3">💼 Job Matches</h2>
+    <div className="space-y-4">
 
-      {/* INPUT */}
-      <textarea
-        className="w-full border p-2 rounded mb-2"
-        rows="3"
-        placeholder="Paste resume text here to get job matches..."
-        onChange={(e) => setResumeText(e.target.value)}
-      />
-
+      {/* BUTTON */}
       <button
         onClick={getMatches}
-        className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition"
+        disabled={!resumeData || loading}
+        className={`px-4 py-2 rounded-lg text-white transition ${
+          !resumeData || loading
+            ? "bg-gray-500 cursor-not-allowed"
+            : "bg-purple-600 hover:bg-purple-700"
+        }`}
       >
-        Find Matches
+        {loading ? "Finding Matches..." : "Get Job Matches"}
       </button>
 
       {/* LOADING */}
       {loading && (
-        <p className="mt-3 text-gray-500">Finding best jobs...</p>
+        <p className="text-gray-400 animate-pulse">
+          Searching best job matches...
+        </p>
       )}
 
       {/* JOB LIST */}
-      <div className="grid gap-4 mt-4">
-        {jobs.map((job, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2 }}
-            className="border rounded-2xl p-4 bg-white hover:shadow-lg transition"
-          >
-            {/* HEADER */}
-            <div className="flex justify-between items-center">
-              <h3 className="font-semibold text-gray-800">
-                Job Match #{index + 1}
-              </h3>
+      <div className="grid gap-4">
+        {jobs.map((job, index) => {
+          const isOpen = expanded[index];
+          const text = job.combined_text || "";
 
-              <span
-                className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  job.score > 0.8
-                    ? "bg-green-100 text-green-700"
-                    : job.score > 0.5
-                    ? "bg-yellow-100 text-yellow-700"
-                    : "bg-red-100 text-red-600"
-                }`}
+          return (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="border rounded-2xl p-4 bg-white/70 dark:bg-gray-900/60"
+            >
+              {/* TITLE + SCORE */}
+              <div className="flex justify-between items-center">
+                <h3 className="font-semibold text-gray-800 dark:text-white">
+                  {job.title || `Job Match #${index + 1}`}
+                </h3>
+
+                <span className="px-3 py-1 text-sm rounded-full bg-gray-200 dark:bg-gray-800">
+                  {(job.score * 100).toFixed(1)}%
+                </span>
+              </div>
+
+              {/* TEXT */}
+              <p className="text-sm mt-2 text-gray-600 dark:text-gray-300">
+                {isOpen ? text : text.slice(0, 180) + "..."}
+              </p>
+
+              {/* READ MORE */}
+              <button
+                onClick={() => toggle(index)}
+                className="text-blue-500 text-sm mt-2"
               >
-                {(job.score * 100).toFixed(1)}%
-              </span>
-            </div>
-
-            {/* CONTENT */}
-            <p className="text-sm text-gray-600 mt-2 line-clamp-3">
-              {job.combined_text}
-            </p>
-          </motion.div>
-        ))}
+                {isOpen ? "Show less" : "Read more"}
+              </button>
+            </motion.div>
+          );
+        })}
       </div>
     </div>
   );

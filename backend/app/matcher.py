@@ -1,42 +1,65 @@
 import pandas as pd
+import numpy as np
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
-import os
-
-# Load model
-model = SentenceTransformer('all-MiniLM-L6-v2')
-
 
 # -----------------------------
-# Load cleaned job dataset
+# LOAD MODEL ONCE
 # -----------------------------
-def load_jobs():
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    file_path = os.path.join(base_dir, "..", "data", "cleaned_jobs.csv")
-
-    df = pd.read_csv(file_path)
-    return df
-
+model = SentenceTransformer("all-MiniLM-L6-v2")
 
 # -----------------------------
-# Match resume with jobs
+# LOAD DATASET
+# -----------------------------
+jobs_df = pd.read_csv("../data/jobs_final.csv")
+
+# -----------------------------
+# CREATE combined_text
+# -----------------------------
+jobs_df["combined_text"] = (
+    jobs_df["Job Title"].fillna("").astype(str)
+    + " "
+    + jobs_df["Description"].fillna("").astype(str)
+)
+
+# -----------------------------
+# LOAD PRECOMPUTED EMBEDDINGS
+# -----------------------------
+job_embeddings = np.load(
+    "../data/job_embeddings.npy"
+)
+
+# -----------------------------
+# MATCH FUNCTION
 # -----------------------------
 def match_jobs(resume_text, top_k=5):
-    jobs = load_jobs()
 
-    # IMPORTANT: use combined_text
-    job_texts = jobs["combined_text"].fillna("").tolist()
+    resume_embedding = model.encode(
+        [resume_text],
+        normalize_embeddings=True
+    )
 
-    # Embed
-    resume_embedding = model.encode([resume_text])
-    job_embeddings = model.encode(job_texts)
+    scores = cosine_similarity(
+        resume_embedding,
+        job_embeddings
+    )[0]
 
-    # Similarity
-    scores = cosine_similarity(resume_embedding, job_embeddings)[0]
+    df = jobs_df.copy()
 
-    jobs["score"] = scores
+    df["score"] = scores
 
-    # Sort results
-    top_jobs = jobs.sort_values(by="score", ascending=False).head(top_k)
+    top_jobs = df.sort_values(
+        by="score",
+        ascending=False
+    ).head(top_k)
 
-    return top_jobs[["combined_text", "score"]]
+    # keep frontend compatibility
+    top_jobs["combined_text"] = (
+        top_jobs["Job Title"].astype(str)
+        + " "
+        + top_jobs["Description"].astype(str)
+    )
+
+    return top_jobs[
+        ["combined_text", "score"]
+    ]

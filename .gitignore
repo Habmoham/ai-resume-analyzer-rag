@@ -27,7 +27,7 @@ build/
 *.local
 
 # =========================
-# ML / AI models (VERY IMPORTANT)
+# ML / AI models
 # =========================
 *.pt
 *.pth
@@ -36,12 +36,21 @@ build/
 *.model
 *.dll
 
+# Embeddings
+*.npy
+
 # HuggingFace cache
 .cache/
 huggingface/
 
-# FAISS index (if you save locally later)
+# FAISS index
 *.index
+
+# =========================
+# Uploaded files
+# =========================
+uploads/
+backend/uploads/
 
 # =========================
 # Environment variables
