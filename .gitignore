@@ -27,7 +27,7 @@ build/
 *.local
 
 # =========================
-# ML / AI models
+# ML / AI models & artifacts
 # =========================
 *.pt
 *.pth
@@ -36,21 +36,36 @@ build/
 *.model
 *.dll
 
-# Embeddings
+# Embeddings / vectors
 *.npy
+*.index
+*.pkl
 
 # HuggingFace cache
 .cache/
 huggingface/
 
-# FAISS index
-*.index
+# =========================
+# Datasets (VERY IMPORTANT)
+# =========================
+data/*.csv
+data/*.json
+data/*.xlsx
+data/*.parquet
+
+# Optional explicit safety (your project files)
+data/jobs_final.csv
+data/resumes.csv
+data/cleaned_resumes.csv
+data/Jobs.csv
+data/cleaned_jobs.csv
 
 # =========================
 # Uploaded files
 # =========================
 uploads/
 backend/uploads/
+**/uploads/
 
 # =========================
 # Environment variables
@@ -81,3 +96,5 @@ Thumbs.db
 # =========================
 *.tmp
 *.temp
+
+
