@@ -13,9 +13,6 @@ model = SentenceTransformer("all-MiniLM-L6-v2")
 # -----------------------------
 jobs_df = pd.read_csv("../data/jobs_final.csv")
 
-# -----------------------------
-# CREATE combined_text
-# -----------------------------
 jobs_df["combined_text"] = (
     jobs_df["Job Title"].fillna("").astype(str)
     + " "
@@ -25,27 +22,35 @@ jobs_df["combined_text"] = (
 # -----------------------------
 # LOAD PRECOMPUTED EMBEDDINGS
 # -----------------------------
-job_embeddings = np.load(
-    "../data/job_embeddings.npy"
-)
+job_embeddings = np.load("../data/job_embeddings.npy")
+
+# IMPORTANT: ensure float32 (faster + safer)
+job_embeddings = job_embeddings.astype(np.float32)
 
 # -----------------------------
 # MATCH FUNCTION
 # -----------------------------
 def match_jobs(resume_text, top_k=5):
 
+    # embed resume (normalize BOTH sides for correctness)
     resume_embedding = model.encode(
         [resume_text],
         normalize_embeddings=True
+    ).astype(np.float32)
+
+    # also normalize job embeddings (VERY IMPORTANT)
+    job_emb_norm = job_embeddings / np.linalg.norm(
+        job_embeddings,
+        axis=1,
+        keepdims=True
     )
 
     scores = cosine_similarity(
         resume_embedding,
-        job_embeddings
+        job_emb_norm
     )[0]
 
     df = jobs_df.copy()
-
     df["score"] = scores
 
     top_jobs = df.sort_values(
@@ -53,13 +58,4 @@ def match_jobs(resume_text, top_k=5):
         ascending=False
     ).head(top_k)
 
-    # keep frontend compatibility
-    top_jobs["combined_text"] = (
-        top_jobs["Job Title"].astype(str)
-        + " "
-        + top_jobs["Description"].astype(str)
-    )
-
-    return top_jobs[
-        ["combined_text", "score"]
-    ]
+    return top_jobs[["combined_text", "score"]]
