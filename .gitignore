@@ -16,7 +16,7 @@ __pycache__/
 .Python
 
 # =========================
-# Environment variables (VERY IMPORTANT)
+# Environment variables
 # =========================
 .env
 .env.*
@@ -47,7 +47,7 @@ Thumbs.db
 *.sw?
 
 # =========================
-# Node / Frontend (if any)
+# Node / Frontend
 # =========================
 node_modules/
 dist/
@@ -55,14 +55,30 @@ dist-ssr/
 build/
 
 # =========================
-# Uploads (NEVER store user uploads)
+# Uploads (NEVER store user files)
 # =========================
 uploads/
 backend/uploads/
 **/uploads/
 
 # =========================
-# ML / AI runtime caches ONLY
+# Ignore ONLY sensitive resume datasets
+# =========================
+data/resumes.csv
+data/cleaned_resumes.csv
+
+# =========================
+# Optional large training artifacts
+# =========================
+*.index
+*.pkl
+*.pt
+*.pth
+*.onnx
+*.model
+
+# =========================
+# HuggingFace / model caches
 # =========================
 .cache/
 huggingface/
