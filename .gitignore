@@ -55,25 +55,15 @@ dist-ssr/
 build/
 
 # =========================
-# Uploads (NEVER store user files)
+# Uploads (NEVER store user uploads)
 # =========================
 uploads/
 backend/uploads/
 **/uploads/
 
 # =========================
-# ML / AI datasets & embeddings (CRITICAL)
+# ML / AI runtime caches ONLY
 # =========================
-data/
-*.npy
-*.index
-*.pkl
-*.pt
-*.pth
-*.onnx
-*.model
-
-# HuggingFace / model caches
 .cache/
 huggingface/
 
