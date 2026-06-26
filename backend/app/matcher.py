@@ -1,104 +1,106 @@
 import os
+import requests
 import pandas as pd
 import numpy as np
-from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
+from dotenv import load_dotenv
 
-# -----------------------------
-# BASE PATH
-# -----------------------------
+load_dotenv()
+
+HF_API_KEY = os.getenv("HF_API_KEY")
+
 BASE_DIR = os.path.dirname(
     os.path.dirname(os.path.abspath(__file__))
 )
 
 # -----------------------------
-# GLOBALS (LAZY LOADING)
+# LOAD DATASET
 # -----------------------------
-model = None
-jobs_df = None
-job_embeddings = None
+jobs_path = os.path.join(
+    BASE_DIR,
+    "data",
+    "jobs_final.csv"
+)
+
+jobs_df = pd.read_csv(jobs_path)
+
+jobs_df["combined_text"] = (
+    jobs_df["Job Title"]
+    .fillna("")
+    .astype(str)
+    + " "
+    +
+    jobs_df["Description"]
+    .fillna("")
+    .astype(str)
+)
+
+# -----------------------------
+# LOAD EMBEDDINGS
+# -----------------------------
+emb_path = os.path.join(
+    BASE_DIR,
+    "data",
+    "job_embeddings.npy"
+)
+
+job_embeddings = np.load(
+    emb_path
+).astype(np.float32)
+
+# normalize once
+norms = np.linalg.norm(
+    job_embeddings,
+    axis=1,
+    keepdims=True
+)
+
+norms[norms == 0] = 1
+
+job_embeddings = job_embeddings / norms
 
 
 # -----------------------------
-# LOAD RESOURCES ONLY WHEN NEEDED
+# HUGGING FACE EMBEDDING API
 # -----------------------------
-def load_resources():
+API_URL = (
+    "https://api-inference.huggingface.co/"
+    "pipeline/feature-extraction/"
+    "sentence-transformers/all-MiniLM-L6-v2"
+)
 
-    global model
-    global jobs_df
-    global job_embeddings
+headers = {
+    "Authorization": f"Bearer {HF_API_KEY}"
+}
 
-    # -----------------------------
-    # LOAD MODEL ONLY ONCE
-    # -----------------------------
-    if model is None:
 
-        print("Loading SentenceTransformer model...")
+def get_embedding(text):
 
-        model = SentenceTransformer(
-            "all-MiniLM-L6-v2"
-        )
+    response = requests.post(
+        API_URL,
+        headers=headers,
+        json={
+            "inputs": text
+        }
+    )
 
-    # -----------------------------
-    # LOAD DATASET ONLY ONCE
-    # -----------------------------
-    if jobs_df is None:
+    output = response.json()
 
-        print("Loading jobs dataset...")
+    embedding = np.array(
+        output
+    ).mean(axis=0)
 
-        jobs_path = os.path.join(
-            BASE_DIR,
-            "data",
-            "jobs_final.csv"
-        )
+    embedding = embedding.astype(
+        np.float32
+    )
 
-        jobs_df = pd.read_csv(jobs_path)
+    # normalize
+    norm = np.linalg.norm(embedding)
 
-        jobs_df["combined_text"] = (
-            jobs_df["Job Title"]
-            .fillna("")
-            .astype(str)
-            + " "
-            +
-            jobs_df["Description"]
-            .fillna("")
-            .astype(str)
-        )
+    if norm != 0:
+        embedding = embedding / norm
 
-    # -----------------------------
-    # LOAD EMBEDDINGS ONLY ONCE
-    # -----------------------------
-    if job_embeddings is None:
-
-        print("Loading embeddings...")
-
-        emb_path = os.path.join(
-            BASE_DIR,
-            "data",
-            "job_embeddings.npy"
-        )
-
-        job_embeddings = np.load(
-            emb_path
-        ).astype(np.float32)
-
-        # -----------------------------
-        # NORMALIZE EMBEDDINGS ONCE
-        # -----------------------------
-        norms = np.linalg.norm(
-            job_embeddings,
-            axis=1,
-            keepdims=True
-        )
-
-        # Prevent division by zero
-        norms[norms == 0] = 1
-
-        job_embeddings = (
-            job_embeddings / norms
-        )
-
-    return model, jobs_df, job_embeddings
+    return embedding.reshape(1, -1)
 
 
 # -----------------------------
@@ -109,35 +111,19 @@ def match_jobs(
     top_k=5
 ):
 
-    # Load resources lazily
-    model, jobs_df, job_embeddings = load_resources()
+    resume_embedding = get_embedding(
+        resume_text
+    )
 
-    # -----------------------------
-    # ENCODE RESUME
-    # -----------------------------
-    resume_embedding = model.encode(
-        [resume_text],
-        normalize_embeddings=True
-    ).astype(np.float32)
-
-    # -----------------------------
-    # COSINE SIMILARITY
-    # -----------------------------
     scores = cosine_similarity(
         resume_embedding,
         job_embeddings
     )[0]
 
-    # -----------------------------
-    # ADD SCORES
-    # -----------------------------
     df = jobs_df.copy()
 
     df["score"] = scores
 
-    # -----------------------------
-    # TOP MATCHES
-    # -----------------------------
     top_jobs = df.sort_values(
         by="score",
         ascending=False
