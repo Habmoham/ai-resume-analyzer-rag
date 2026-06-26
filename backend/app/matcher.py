@@ -3,11 +3,8 @@ import requests
 import pandas as pd
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
-from dotenv import load_dotenv
+from app.config import HF_API_KEY
 
-load_dotenv()
-
-HF_API_KEY = os.getenv("HF_API_KEY")
 
 BASE_DIR = os.path.dirname(
     os.path.dirname(os.path.abspath(__file__))

@@ -1,11 +1,8 @@
 import requests
 import os
-from dotenv import load_dotenv
 from app.vector_store import create_index, search_index
+from app.config import GROQ_API_KEY
 
-load_dotenv()
-
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 if not GROQ_API_KEY:
      print("WARNING: GROQ_API_KEY not set")
