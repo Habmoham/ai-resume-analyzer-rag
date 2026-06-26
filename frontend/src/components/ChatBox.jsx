@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import API from "../services/api";
 
 export default function ChatBox() {
@@ -6,12 +6,25 @@ export default function ChatBox() {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const askAI = async () => {
-    if (!query) return;
+  const bottomRef = useRef(null);
 
-    const userMessage = { role: "user", text: query };
+  // Auto-scroll to latest message
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({
+      behavior: "smooth",
+    });
+  }, [messages]);
+
+  const askAI = async () => {
+    if (!query.trim()) return;
+
+    const userMessage = {
+      role: "user",
+      text: query,
+    };
 
     setMessages((prev) => [...prev, userMessage]);
+
     setLoading(true);
 
     try {
@@ -25,53 +38,101 @@ export default function ChatBox() {
       };
 
       setMessages((prev) => [...prev, aiMessage]);
+
     } catch (err) {
+
       console.error(err);
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "ai",
+          text: "Something went wrong. Please try again.",
+        },
+      ]);
     }
 
     setQuery("");
     setLoading(false);
   };
 
+  // Press Enter to send
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      askAI();
+    }
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="bg-gray-900 rounded-2xl p-5 shadow-xl border border-gray-800">
+
+      {/* HEADER */}
+      <div className="mb-4">
+        <h2 className="text-xl font-bold text-white">
+          🤖 AI Career Assistant
+        </h2>
+
+        <p className="text-gray-400 text-sm mt-1">
+          Ask about resumes, interviews, careers, or job skills.
+        </p>
+      </div>
 
       {/* CHAT WINDOW */}
-      <div className="h-64 overflow-y-auto p-3 bg-gray-900/60 rounded-xl space-y-2">
+      <div className="h-80 overflow-y-auto bg-gray-950 rounded-xl p-4 space-y-3">
+
+        {messages.length === 0 && (
+          <div className="text-gray-500 text-sm">
+            Start chatting with the AI assistant...
+          </div>
+        )}
+
         {messages.map((msg, i) => (
           <div
             key={i}
-            className={`p-2 rounded-lg text-sm ${
+            className={`max-w-[85%] p-3 rounded-2xl text-sm whitespace-pre-line ${
               msg.role === "user"
-                ? "bg-blue-600 text-white ml-auto w-fit"
-                : "bg-gray-700 text-white w-fit"
+                ? "ml-auto bg-blue-600 text-white"
+                : "bg-gray-800 text-gray-100"
             }`}
           >
             {msg.text}
           </div>
         ))}
+
+        {loading && (
+          <div className="bg-gray-800 text-gray-300 p-3 rounded-2xl w-fit text-sm animate-pulse">
+            AI is thinking...
+          </div>
+        )}
+
+        <div ref={bottomRef} />
       </div>
 
-      {/* INPUT */}
-      <textarea
-        className="w-full p-3 rounded-lg bg-gray-800 text-white border border-gray-700"
-        rows="2"
-        placeholder="Ask about resumes, jobs, career..."
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-      />
+      {/* INPUT AREA */}
+      <div className="mt-4 space-y-3">
 
-      <button
-        onClick={askAI}
-        disabled={!query || loading}
-        className={`px-4 py-2 rounded-lg text-white transition ${
-          !query || loading
-            ? "bg-gray-500 cursor-not-allowed"
-            : "bg-green-600 hover:bg-green-700"
-        }`}
-      >
-        {loading ? "Thinking..." : "Ask AI"}
-      </button>
+        <textarea
+          rows="3"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Ask something about resumes, jobs, interviews..."
+          className="w-full rounded-xl bg-gray-800 border border-gray-700 text-white p-3 outline-none focus:ring-2 focus:ring-green-500 resize-none"
+        />
+
+        <button
+          onClick={askAI}
+          disabled={!query.trim() || loading}
+          className={`w-full py-3 rounded-xl font-medium transition ${
+            !query.trim() || loading
+              ? "bg-gray-700 text-gray-400 cursor-not-allowed"
+              : "bg-green-600 hover:bg-green-700 text-white"
+          }`}
+        >
+          {loading ? "Thinking..." : "Ask AI"}
+        </button>
+      </div>
     </div>
   );
 }

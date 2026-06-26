@@ -1,9 +1,17 @@
 import requests
+import os
+from dotenv import load_dotenv
 from app.vector_store import create_index, search_index
 
+load_dotenv()
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+if not GROQ_API_KEY:
+    raise ValueError("GROQ_API_KEY is missing in environment variables")
 
 # -----------------------------
-# STEP 1 — Build knowledge base ONCE
+# STEP 1 — Build knowledge base
 # -----------------------------
 texts = [
     "A good resume should highlight skills clearly",
@@ -14,24 +22,48 @@ texts = [
     "Machine learning engineers should know Python, NLP, embeddings"
 ]
 
-index, _ = create_index(texts)
+# -----------------------------
+# GLOBAL INDEX (lazy loaded)
+# -----------------------------
+index = None
+
+# -----------------------------
+# STEP 2 — Lazy load FAISS index
+# -----------------------------
+def get_index():
+    global index
+
+    if index is None:
+        index, _ = create_index(texts)
+
+    return index
 
 
 # -----------------------------
-# STEP 2 — Retrieve context
+# STEP 3 — Retrieve context
 # -----------------------------
 def retrieve_context(query):
-    results = search_index(index, query, texts, top_k=3)
+    idx = get_index()
+
+    results = search_index(
+        idx,
+        query,
+        texts,
+        top_k=3
+    )
+
     return "\n".join(results)
 
 
 # -----------------------------
-# STEP 3 — Call Ollama
+# STEP 4 — Generate AI response
 # -----------------------------
 def generate_response(query, context):
-    url = "http://localhost:11434/api/generate"
 
-    prompt = f"""
+    try:
+        url = "https://api.groq.com/openai/v1/chat/completions"
+
+        prompt = f"""
 You are an AI career assistant.
 
 Use the context below to answer the question.
@@ -42,21 +74,46 @@ Context:
 Question:
 {query}
 
-Answer in simple professional language:
+Answer in a professional and helpful way.
 """
 
-    payload = {
-        "model": "llama3",
-        "prompt": prompt,
-        "stream": False
-    }
+        payload = {
+            "model": "llama-3.3-70b-versatile",
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "You are a helpful AI career assistant."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            "temperature": 0.7
+        }
 
-    response = requests.post(url, json=payload)
-    return response.json()["response"]
+        headers = {
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        }
+
+        response = requests.post(url, json=payload, headers=headers)
+
+        print("STATUS:", response.status_code)
+        print("BODY:", response.text)
+
+        if response.status_code != 200:
+            return response.text
+
+        return response.json()["choices"][0]["message"]["content"]
+
+    except Exception as e:
+        print("ERROR:", str(e))
+        return str(e)
 
 
 # -----------------------------
-# STEP 4 — MAIN FUNCTION
+# STEP 5 — MAIN FUNCTION
 # -----------------------------
 def ask_ai(query):
     context = retrieve_context(query)

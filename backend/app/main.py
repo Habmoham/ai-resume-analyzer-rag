@@ -1,11 +1,14 @@
+import os
+from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import os
-
 from app.resume_parser import parse_resume
 from app.matcher import match_jobs
 from app.rag import ask_ai
+
+load_dotenv()
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 app = FastAPI()
 

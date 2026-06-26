@@ -5,65 +5,144 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
 # -----------------------------
-# BASE PATH (IMPORTANT FOR RENDER)
+# BASE PATH
 # -----------------------------
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-# -----------------------------
-# LOAD MODEL ONCE
-# -----------------------------
-model = SentenceTransformer("all-MiniLM-L6-v2")
-
-# -----------------------------
-# LOAD DATASET
-# -----------------------------
-jobs_path = os.path.join(BASE_DIR, "data", "jobs_final.csv")
-emb_path = os.path.join(BASE_DIR, "data", "job_embeddings.npy")
-
-jobs_df = pd.read_csv(jobs_path)
-
-# Create combined text (used for UI display)
-jobs_df["combined_text"] = (
-    jobs_df["Job Title"].fillna("").astype(str)
-    + " "
-    + jobs_df["Description"].fillna("").astype(str)
+BASE_DIR = os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))
 )
 
 # -----------------------------
-# LOAD PRECOMPUTED EMBEDDINGS
+# GLOBALS (LAZY LOADING)
 # -----------------------------
-job_embeddings = np.load(emb_path).astype(np.float32)
+model = None
+jobs_df = None
+job_embeddings = None
 
-# Normalize job embeddings once (IMPORTANT for cosine similarity)
-job_embeddings = job_embeddings / np.linalg.norm(
-    job_embeddings,
-    axis=1,
-    keepdims=True
-)
+
+# -----------------------------
+# LOAD RESOURCES ONLY WHEN NEEDED
+# -----------------------------
+def load_resources():
+
+    global model
+    global jobs_df
+    global job_embeddings
+
+    # -----------------------------
+    # LOAD MODEL ONLY ONCE
+    # -----------------------------
+    if model is None:
+
+        print("Loading SentenceTransformer model...")
+
+        model = SentenceTransformer(
+            "all-MiniLM-L6-v2"
+        )
+
+    # -----------------------------
+    # LOAD DATASET ONLY ONCE
+    # -----------------------------
+    if jobs_df is None:
+
+        print("Loading jobs dataset...")
+
+        jobs_path = os.path.join(
+            BASE_DIR,
+            "data",
+            "jobs_final.csv"
+        )
+
+        jobs_df = pd.read_csv(jobs_path)
+
+        jobs_df["combined_text"] = (
+            jobs_df["Job Title"]
+            .fillna("")
+            .astype(str)
+            + " "
+            +
+            jobs_df["Description"]
+            .fillna("")
+            .astype(str)
+        )
+
+    # -----------------------------
+    # LOAD EMBEDDINGS ONLY ONCE
+    # -----------------------------
+    if job_embeddings is None:
+
+        print("Loading embeddings...")
+
+        emb_path = os.path.join(
+            BASE_DIR,
+            "data",
+            "job_embeddings.npy"
+        )
+
+        job_embeddings = np.load(
+            emb_path
+        ).astype(np.float32)
+
+        # -----------------------------
+        # NORMALIZE EMBEDDINGS ONCE
+        # -----------------------------
+        norms = np.linalg.norm(
+            job_embeddings,
+            axis=1,
+            keepdims=True
+        )
+
+        # Prevent division by zero
+        norms[norms == 0] = 1
+
+        job_embeddings = (
+            job_embeddings / norms
+        )
+
+    return model, jobs_df, job_embeddings
+
 
 # -----------------------------
 # MATCH FUNCTION
 # -----------------------------
-def match_jobs(resume_text, top_k=5):
+def match_jobs(
+    resume_text,
+    top_k=5
+):
 
-    # Embed resume only (fast + lightweight)
+    # Load resources lazily
+    model, jobs_df, job_embeddings = load_resources()
+
+    # -----------------------------
+    # ENCODE RESUME
+    # -----------------------------
     resume_embedding = model.encode(
         [resume_text],
         normalize_embeddings=True
     ).astype(np.float32)
 
-    # Cosine similarity
-    scores = cosine_similarity(resume_embedding, job_embeddings)[0]
+    # -----------------------------
+    # COSINE SIMILARITY
+    # -----------------------------
+    scores = cosine_similarity(
+        resume_embedding,
+        job_embeddings
+    )[0]
 
-    # Copy dataframe
+    # -----------------------------
+    # ADD SCORES
+    # -----------------------------
     df = jobs_df.copy()
+
     df["score"] = scores
 
-    # Sort results
+    # -----------------------------
+    # TOP MATCHES
+    # -----------------------------
     top_jobs = df.sort_values(
         by="score",
         ascending=False
     ).head(top_k)
 
-    # Return frontend-friendly format
-    return top_jobs[["combined_text", "score"]]
+    return top_jobs[
+        ["combined_text", "score"]
+    ]
