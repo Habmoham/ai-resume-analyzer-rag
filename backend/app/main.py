@@ -1,12 +1,12 @@
 import os
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.requests import Request
 from pydantic import BaseModel
+
 from app.resume_parser import parse_resume
 from app.matcher import match_jobs
 from app.rag import ask_ai
-from app.config import GROQ_API_KEY
-
 
 app = FastAPI()
 
@@ -18,6 +18,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ---------------- GLOBAL ERROR HANDLER ----------------
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    print("GLOBAL ERROR:", str(exc))
+    return {
+        "status": "error",
+        "message": str(exc)
+    }
 
 # ---------------- UPLOAD FOLDER ----------------
 UPLOAD_DIR = "uploads"
@@ -34,8 +43,7 @@ async def upload_resume(file: UploadFile = File(...)):
     file_path = os.path.join(UPLOAD_DIR, file.filename)
 
     with open(file_path, "wb") as f:
-        content = await file.read()
-        f.write(content)
+        f.write(await file.read())
 
     text = parse_resume(file_path)
 
@@ -44,29 +52,26 @@ async def upload_resume(file: UploadFile = File(...)):
         "text": text
     }
 
-# ---------------- MATCH REQUEST MODEL ----------------
+# ---------------- MODELS ----------------
 class MatchRequest(BaseModel):
     resume_text: str
 
-# ---------------- JOB MATCHING API ----------------
+class AskRequest(BaseModel):
+    query: str
+
+# ---------------- JOB MATCHING ----------------
 @app.post("/match-jobs")
 def match_jobs_api(request: MatchRequest):
     results = match_jobs(request.resume_text)
-
     return {
         "status": "success",
         "matches": results.to_dict(orient="records")
     }
 
-# ---------------- AI CHAT REQUEST MODEL ----------------
-class AskRequest(BaseModel):
-    query: str
-
-# ---------------- RAG CHATBOT API ----------------
+# ---------------- RAG CHAT ----------------
 @app.post("/ask-ai")
 def ask_ai_endpoint(request: AskRequest):
     response = ask_ai(request.query)
-
     return {
         "status": "success",
         "answer": response

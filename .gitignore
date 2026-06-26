@@ -1,4 +1,3 @@
-
 # =========================
 # Python virtual environment (NEVER push)
 # =========================
@@ -48,7 +47,7 @@ Thumbs.db
 *.sw?
 
 # =========================
-# Node / Frontend
+# Node / Frontend (if any)
 # =========================
 node_modules/
 dist/
@@ -56,15 +55,25 @@ dist-ssr/
 build/
 
 # =========================
-# Uploads (user files should NOT be stored in git)
+# Uploads (NEVER store user files)
 # =========================
 uploads/
 backend/uploads/
 **/uploads/
 
 # =========================
-# ML / AI runtime caches
+# ML / AI datasets & embeddings (CRITICAL)
 # =========================
+data/
+*.npy
+*.index
+*.pkl
+*.pt
+*.pth
+*.onnx
+*.model
+
+# HuggingFace / model caches
 .cache/
 huggingface/
 

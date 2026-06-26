@@ -5,127 +5,65 @@ import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from app.config import HF_API_KEY
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-BASE_DIR = os.path.dirname(
-    os.path.dirname(os.path.abspath(__file__))
-)
-
-# -----------------------------
-# LOAD DATASET
-# -----------------------------
-jobs_path = os.path.join(
-    BASE_DIR,
-    "data",
-    "jobs_final.csv"
-)
+jobs_path = os.path.join(BASE_DIR, "data", "jobs_final.csv")
+emb_path = os.path.join(BASE_DIR, "data", "job_embeddings.npy")
 
 jobs_df = pd.read_csv(jobs_path)
 
 jobs_df["combined_text"] = (
-    jobs_df["Job Title"]
-    .fillna("")
-    .astype(str)
+    jobs_df["Job Title"].fillna("").astype(str)
     + " "
-    +
-    jobs_df["Description"]
-    .fillna("")
-    .astype(str)
+    + jobs_df["Description"].fillna("").astype(str)
 )
 
-# -----------------------------
-# LOAD EMBEDDINGS
-# -----------------------------
-emb_path = os.path.join(
-    BASE_DIR,
-    "data",
-    "job_embeddings.npy"
-)
+job_embeddings = np.load(emb_path).astype(np.float32)
 
-job_embeddings = np.load(
-    emb_path
-).astype(np.float32)
-
-# normalize once
-norms = np.linalg.norm(
-    job_embeddings,
-    axis=1,
-    keepdims=True
-)
-
+# normalize
+norms = np.linalg.norm(job_embeddings, axis=1, keepdims=True)
 norms[norms == 0] = 1
-
 job_embeddings = job_embeddings / norms
 
+API_URL = "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2"
 
-# -----------------------------
-# HUGGING FACE EMBEDDING API
-# -----------------------------
-API_URL = (
-    "https://api-inference.huggingface.co/"
-    "pipeline/feature-extraction/"
-    "sentence-transformers/all-MiniLM-L6-v2"
-)
-
-headers = {
-    "Authorization": f"Bearer {HF_API_KEY}"
-}
-
+headers = {"Authorization": f"Bearer {HF_API_KEY}"}
 
 def get_embedding(text):
+    try:
+        response = requests.post(
+            API_URL,
+            headers=headers,
+            json={"inputs": text},
+            timeout=10
+        )
 
-    response = requests.post(
-        API_URL,
-        headers=headers,
-        json={
-            "inputs": text
-        }
-    )
+        data = response.json()
 
-    output = response.json()
+        if isinstance(data, dict) and "error" in data:
+            raise ValueError(f"HF API Error: {data['error']}")
 
-    embedding = np.array(
-        output
-    ).mean(axis=0)
+        embedding = np.array(data).mean(axis=0).astype(np.float32)
 
-    embedding = embedding.astype(
-        np.float32
-    )
+        norm = np.linalg.norm(embedding)
+        if norm != 0:
+            embedding = embedding / norm
 
-    # normalize
-    norm = np.linalg.norm(embedding)
+        return embedding.reshape(1, -1)
 
-    if norm != 0:
-        embedding = embedding / norm
+    except Exception as e:
+        print("HF ERROR:", str(e))
+        return np.zeros((1, 384), dtype=np.float32)
 
-    return embedding.reshape(1, -1)
+def match_jobs(resume_text, top_k=5):
 
+    resume_embedding = get_embedding(resume_text)
 
-# -----------------------------
-# MATCH FUNCTION
-# -----------------------------
-def match_jobs(
-    resume_text,
-    top_k=5
-):
-
-    resume_embedding = get_embedding(
-        resume_text
-    )
-
-    scores = cosine_similarity(
-        resume_embedding,
-        job_embeddings
-    )[0]
+    scores = cosine_similarity(resume_embedding, job_embeddings)[0]
 
     df = jobs_df.copy()
-
     df["score"] = scores
 
-    top_jobs = df.sort_values(
-        by="score",
-        ascending=False
-    ).head(top_k)
+    top_jobs = df.sort_values(by="score", ascending=False).head(top_k)
 
-    return top_jobs[
-        ["combined_text", "score"]
-    ]
+    return top_jobs[["combined_text", "score"]]
