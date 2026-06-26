@@ -1,81 +1,37 @@
+
 # =========================
-# Python
+# Python virtual environment (NEVER push)
+# =========================
+venv/
+env/
+.venv/
+ENV/
+
+# =========================
+# Python cache
 # =========================
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 .Python
-env/
-venv/
-.venv/
 
 # =========================
-# FastAPI / Logs
+# Environment variables (VERY IMPORTANT)
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Logs
 # =========================
 *.log
 logs/
 uvicorn*.log
 
 # =========================
-# Node / React
-# =========================
-node_modules/
-dist/
-dist-ssr/
-build/
-*.local
-
-# =========================
-# ML / AI models & artifacts
-# =========================
-*.pt
-*.pth
-*.bin
-*.onnx
-*.model
-*.dll
-
-# Embeddings / vectors
-*.npy
-*.index
-*.pkl
-
-# HuggingFace cache
-.cache/
-huggingface/
-
-# =========================
-# Datasets (VERY IMPORTANT)
-# =========================
-data/*.csv
-data/*.json
-data/*.xlsx
-data/*.parquet
-
-# Optional explicit safety (your project files)
-data/jobs_final.csv
-data/resumes.csv
-data/cleaned_resumes.csv
-data/Jobs.csv
-data/cleaned_jobs.csv
-
-# =========================
-# Uploaded files
-# =========================
-uploads/
-backend/uploads/
-**/uploads/
-
-# =========================
-# Environment variables
-# =========================
-.env
-.env.local
-.env.*.local
-
-# =========================
-# OS
+# OS files
 # =========================
 .DS_Store
 Thumbs.db
@@ -92,9 +48,28 @@ Thumbs.db
 *.sw?
 
 # =========================
+# Node / Frontend
+# =========================
+node_modules/
+dist/
+dist-ssr/
+build/
+
+# =========================
+# Uploads (user files should NOT be stored in git)
+# =========================
+uploads/
+backend/uploads/
+**/uploads/
+
+# =========================
+# ML / AI runtime caches
+# =========================
+.cache/
+huggingface/
+
+# =========================
 # Temporary files
 # =========================
 *.tmp
 *.temp
-
-
