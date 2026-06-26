@@ -1,7 +1,6 @@
 import os
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.requests import Request
 from pydantic import BaseModel
 
 from app.resume_parser import parse_resume
@@ -19,15 +18,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ---------------- GLOBAL ERROR HANDLER ----------------
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    print("GLOBAL ERROR:", str(exc))
-    return {
-        "status": "error",
-        "message": str(exc)
-    }
-
 # ---------------- UPLOAD FOLDER ----------------
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -35,15 +25,22 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 # ---------------- ROOT ----------------
 @app.get("/")
 def home():
-    return {"message": "AI Resume Analyzer Running"}
+    return {
+        "message": "AI Resume Analyzer Running"
+    }
 
 # ---------------- UPLOAD RESUME ----------------
 @app.post("/upload-resume")
 async def upload_resume(file: UploadFile = File(...)):
-    file_path = os.path.join(UPLOAD_DIR, file.filename)
+
+    file_path = os.path.join(
+        UPLOAD_DIR,
+        file.filename
+    )
 
     with open(file_path, "wb") as f:
-        f.write(await file.read())
+        content = await file.read()
+        f.write(content)
 
     text = parse_resume(file_path)
 
@@ -52,27 +49,65 @@ async def upload_resume(file: UploadFile = File(...)):
         "text": text
     }
 
-# ---------------- MODELS ----------------
+
+# ---------------- REQUEST MODELS ----------------
+
 class MatchRequest(BaseModel):
     resume_text: str
+
 
 class AskRequest(BaseModel):
     query: str
 
-# ---------------- JOB MATCHING ----------------
+
+# ---------------- MATCH JOBS ----------------
+
 @app.post("/match-jobs")
 def match_jobs_api(request: MatchRequest):
-    results = match_jobs(request.resume_text)
-    return {
-        "status": "success",
-        "matches": results.to_dict(orient="records")
-    }
 
-# ---------------- RAG CHAT ----------------
+    try:
+        results = match_jobs(
+            request.resume_text
+        )
+
+        return {
+            "status": "success",
+            "matches": results.to_dict(
+                orient="records"
+            )
+        }
+
+    except Exception as e:
+
+        print("MATCH ERROR:", str(e))
+
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+
+# ---------------- AI CHAT ----------------
+
 @app.post("/ask-ai")
 def ask_ai_endpoint(request: AskRequest):
-    response = ask_ai(request.query)
-    return {
-        "status": "success",
-        "answer": response
-    }
+
+    try:
+
+        response = ask_ai(
+            request.query
+        )
+
+        return {
+            "status": "success",
+            "answer": response
+        }
+
+    except Exception as e:
+
+        print("AI ERROR:", str(e))
+
+        return {
+            "status": "error",
+            "message": str(e)
+        }
